@@ -13,14 +13,14 @@ const Home = () => {
         transition={{ duration: 0.6 }}
         className="text-center space-y-6"
       >
-        <div className="space-y-4">
-<h1 className="text-4xl md:text-5xl font-bold text-surface-900 leading-relaxed">
-            Split Excel Worksheets
-            <span className="block text-primary leading-relaxed">Into Separate PDFs</span>
+<div className="space-y-4">
+          <h1 className="text-4xl md:text-5xl font-bold text-surface-900 leading-relaxed">
+            Combine Workbooks
+            <span className="block text-primary leading-relaxed">Merge Multiple Excel Files Easily</span>
           </h1>
           <p className="text-xl text-surface-600 max-w-2xl mx-auto">
-            Upload your multi-sheet Excel workbook and automatically convert each worksheet 
-            into individual PDF files. Download everything as an organized ZIP archive.
+            Upload multiple Excel workbooks and automatically combine them into a single, 
+            organized workbook. Download your merged file instantly.
           </p>
         </div>
       </motion.div>
@@ -53,9 +53,9 @@ animate={{ opacity: 1, y: 0 }}
               <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto">
                 <ApperIcon name="Upload" size={24} className="text-primary" />
               </div>
-              <h3 className="font-medium text-surface-900">Upload File</h3>
+<h3 className="font-medium text-surface-900">Upload Files</h3>
               <p className="text-sm text-surface-600">
-                Select your Excel workbook with multiple worksheets
+                Select multiple Excel workbooks you want to combine
               </p>
             </div>
             
@@ -63,9 +63,9 @@ animate={{ opacity: 1, y: 0 }}
               <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto">
                 <ApperIcon name="Settings" size={24} className="text-primary" />
               </div>
-              <h3 className="font-medium text-surface-900">Process</h3>
-<p className="text-sm text-surface-600">
-                We automatically convert each worksheet into a PDF
+<h3 className="font-medium text-surface-900">Process</h3>
+              <p className="text-sm text-surface-600">
+                We automatically merge all workbooks into a single file
               </p>
             </div>
             
@@ -73,9 +73,9 @@ animate={{ opacity: 1, y: 0 }}
               <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto">
                 <ApperIcon name="Download" size={24} className="text-primary" />
               </div>
-              <h3 className="font-medium text-surface-900">Download</h3>
+<h3 className="font-medium text-surface-900">Download</h3>
               <p className="text-sm text-surface-600">
-                Get a ZIP file with all worksheets as separate PDF files
+                Get your combined workbook with all data merged seamlessly
               </p>
             </div>
           </div>
