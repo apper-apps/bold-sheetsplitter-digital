@@ -74,9 +74,8 @@ const stages = [
             <span className="text-sm font-medium">
               {stage === 'combine' ? `${progress}% complete` : 'Please wait...'}
             </span>
-          </motion.div>
+</motion.div>
         </div>
-      </div>
       </div>
     </motion.div>
   )
