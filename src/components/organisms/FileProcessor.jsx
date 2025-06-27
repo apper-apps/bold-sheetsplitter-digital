@@ -241,8 +241,8 @@ return (
               </Button>
             </div>
           </div>
-        </motion.div>
-)}
+</motion.div>
+      )}
 
       {/* Files Info & Upload Additional */}
       {files.length > 0 && stage !== 'combine' && stage !== 'download' && (
@@ -442,9 +442,9 @@ Processing Complete!
             handleAddMoreFiles(newFiles)
           }
           e.target.value = ''
-        }}
+}}
         className="hidden"
-multiple
+        multiple
       />
     </div>
   )
