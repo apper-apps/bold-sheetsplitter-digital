@@ -315,10 +315,10 @@ return (
                       className="text-surface-400 hover:text-surface-600"
                     />
                   </div>
-                )
+)
               })}
             </div>
-</div>
+          </div>
 
           {/* Combine Action */}
           <div className="space-y-4">
@@ -359,7 +359,7 @@ return (
                   Combine All Files
                 </Button>
               )}
-</div>
+            </div>
 
             {/* Files Preview */}
             {stage !== 'complete' && (
@@ -384,9 +384,8 @@ return (
                 </div>
               </div>
             )}
-</div>
-        </div>
-      </motion.div>
+          </div>
+        </motion.div>
       )}
 
       {/* Success State */}
