@@ -351,15 +351,17 @@ Convert to PDFs ({selectedWorksheets.length})
 Your {selectedWorksheets.length} selected worksheets have been converted to PDF files and packaged into a ZIP archive.
           </p>
           
-          <div className="flex justify-center space-x-3">
-            <Button
-              variant="success"
-              icon="Download"
-              onClick={handleDownload}
-              size="lg"
-            >
-              Download ZIP ({formatFileSize(downloadReady.size)})
-            </Button>
+<div className="flex justify-center flex-wrap gap-3">
+            {downloadReady && (
+              <Button
+                variant="success"
+                icon="Download"
+                onClick={handleDownload}
+                size="lg"
+              >
+                Download PDFs ({formatFileSize(downloadReady.size)})
+              </Button>
+            )}
           </div>
         </motion.div>
       )}
