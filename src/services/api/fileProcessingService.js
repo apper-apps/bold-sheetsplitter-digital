@@ -198,8 +198,7 @@ class FileProcessingService {
       size: blob.size,
       sheetCount: combinedWorkbook.SheetNames.length
     }
-  }
-
+}
 async processWorksheets(workbook, selectedWorksheets, onProgress) {
     await delay(500)
     
@@ -273,7 +272,6 @@ async processWorksheets(workbook, selectedWorksheets, onProgress) {
     
     return zip
   }
-
 async generateDownload(zip, originalFileName) {
     await delay(300)
     

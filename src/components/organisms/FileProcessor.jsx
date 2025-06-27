@@ -10,20 +10,19 @@ import FileIcon from "@/components/atoms/FileIcon";
 import Button from "@/components/atoms/Button";
 
 const FileProcessor = () => {
-const [file, setFile] = useState(null)
-  const [worksheets, setWorksheets] = useState([])
-  const [workbook, setWorkbook] = useState(null)
-  const [selectedWorksheets, setSelectedWorksheets] = useState([])
-  const [stage, setStage] = useState('idle') // idle, upload, analyze, process, download, complete
+  const [files, setFiles] = useState([])
+  const [workbookAnalyses, setWorkbookAnalyses] = useState([])
+  const [totalWorksheets, setTotalWorksheets] = useState(0)
+  const [stage, setStage] = useState('idle') // idle, upload, analyze, combine, download, complete
   const [progress, setProgress] = useState(0)
   const [currentWorksheet, setCurrentWorksheet] = useState('')
   const [downloadReady, setDownloadReady] = useState(null)
   const [error, setError] = useState(null)
-const resetState = () => {
-    setFile(null)
-    setWorksheets([])
-    setWorkbook(null)
-    setSelectedWorksheets([])
+
+  const resetState = () => {
+    setFiles([])
+    setWorkbookAnalyses([])
+    setTotalWorksheets(0)
     setStage('idle')
     setProgress(0)
     setCurrentWorksheet('')
@@ -31,30 +30,31 @@ const resetState = () => {
     setError(null)
   }
 
-  const handleFileSelect = async (selectedFile) => {
+const handleFileSelect = async (selectedFiles) => {
     try {
       setError(null)
       setStage('upload')
       setProgress(0)
 
-      // Validate file
-      await fileProcessingService.validateFile(selectedFile)
+      // Validate files
+      await fileProcessingService.validateMultipleFiles(selectedFiles)
       setProgress(50)
 
       setStage('analyze')
       setProgress(0)
 
-      // Analyze workbook
-      const result = await fileProcessingService.analyzeWorkbook(selectedFile)
+      // Analyze all workbooks
+      const analyses = await fileProcessingService.analyzeMultipleWorkbooks(selectedFiles)
       
-setFile(result.file)
-      setWorksheets(result.worksheets)
-      setWorkbook(result.workbook)
-      setSelectedWorksheets(result.worksheets.map(ws => ws.index))
+      const totalWorksheetCount = analyses.reduce((total, analysis) => total + analysis.worksheets.length, 0)
+      
+      setFiles(analyses.map(a => a.file))
+      setWorkbookAnalyses(analyses)
+      setTotalWorksheets(totalWorksheetCount)
       setStage('idle')
       setProgress(100)
 
-      toast.success(`Found ${result.worksheets.length} worksheets in your file`)
+      toast.success(`Found ${totalWorksheetCount} worksheets across ${selectedFiles.length} files`)
     } catch (err) {
       setError(err.message)
       setStage('idle')
@@ -62,27 +62,75 @@ setFile(result.file)
     }
   }
 
-const handleProcessFile = async () => {
-    if (!workbook || !worksheets.length || !selectedWorksheets.length) return
+  const handleAddMoreFiles = async (additionalFiles) => {
+    try {
+      setError(null)
+      setStage('upload')
+      setProgress(0)
+
+      // Validate additional files
+      await fileProcessingService.validateMultipleFiles(additionalFiles)
+      setProgress(50)
+
+      setStage('analyze')
+      setProgress(0)
+
+      // Analyze additional workbooks
+      const newAnalyses = await fileProcessingService.analyzeMultipleWorkbooks(additionalFiles)
+      
+      const newWorksheetCount = newAnalyses.reduce((total, analysis) => total + analysis.worksheets.length, 0)
+      
+      // Combine with existing
+      const allAnalyses = [...workbookAnalyses, ...newAnalyses]
+      const allFiles = [...files, ...newAnalyses.map(a => a.file)]
+      const newTotalWorksheets = totalWorksheets + newWorksheetCount
+      
+      setFiles(allFiles)
+      setWorkbookAnalyses(allAnalyses)
+      setTotalWorksheets(newTotalWorksheets)
+      setStage('idle')
+      setProgress(100)
+
+      toast.success(`Added ${newWorksheetCount} more worksheets. Total: ${newTotalWorksheets} worksheets`)
+    } catch (err) {
+      setError(err.message)
+      setStage('idle')
+      toast.error(err.message)
+    }
+  }
+
+const handleCombineFiles = async () => {
+    if (!workbookAnalyses.length || totalWorksheets === 0) return
 
     try {
       setError(null)
-      setStage('process')
+      setStage('combine')
       setProgress(0)
 
-      // Filter selected worksheets
-      const selectedWorksheetObjects = worksheets.filter(ws => selectedWorksheets.includes(ws.index))
-
-      // Process worksheets
-      const zip = await fileProcessingService.processWorksheets(
-        workbook, 
-        selectedWorksheetObjects,
-(progressValue) => {
+      // Combine all worksheets
+      const combinedWorkbook = await fileProcessingService.combineAllSheets(
+        workbookAnalyses,
+        (progressValue) => {
           setProgress(progressValue)
           if (progressValue < 100) {
-            const currentIndex = Math.floor((progressValue / 100) * selectedWorksheetObjects.length)
-            if (selectedWorksheetObjects[currentIndex]) {
-              setCurrentWorksheet(selectedWorksheetObjects[currentIndex].name)
+            const totalSheets = workbookAnalyses.reduce((total, analysis) => total + analysis.worksheets.length, 0)
+            const currentSheetIndex = Math.floor((progressValue / 100) * totalSheets)
+            let currentSheet = null
+            let runningIndex = 0
+            
+            for (const analysis of workbookAnalyses) {
+              for (const worksheet of analysis.worksheets) {
+                if (runningIndex === currentSheetIndex) {
+                  currentSheet = worksheet.name
+                  break
+                }
+                runningIndex++
+              }
+              if (currentSheet) break
+            }
+            
+            if (currentSheet) {
+              setCurrentWorksheet(currentSheet)
             }
           }
         }
@@ -91,18 +139,19 @@ const handleProcessFile = async () => {
       setStage('download')
       setProgress(0)
 
-      // Generate download
-      const download = await fileProcessingService.generateDownload(zip, file.name)
+      // Generate combined Excel file
+      const baseFileName = files.length > 0 ? files[0].name.replace(/\.[^/.]+$/, '') : 'combined'
+      const download = await fileProcessingService.generateCombinedExcel(combinedWorkbook, baseFileName)
       
       setDownloadReady(download)
-setStage('complete')
+      setStage('complete')
       setProgress(100)
 
-toast.success(`${selectedWorksheetObjects.length} worksheets converted to PDFs successfully! Ready for download.`)
+      toast.success(`${totalWorksheets} worksheets combined successfully! Ready for download.`)
     } catch (err) {
       setError(err.message)
       setStage('idle')
-      toast.error('Failed to process worksheets')
+      toast.error('Failed to combine files')
     }
   }
 
@@ -118,31 +167,27 @@ toast.success(`${selectedWorksheetObjects.length} worksheets converted to PDFs s
     return mb < 1 ? `${(bytes / 1024).toFixed(0)}KB` : `${mb.toFixed(1)}MB`
 }
 
-  const handleWorksheetSelection = (worksheetIndex, selected) => {
-    setSelectedWorksheets(prev => {
-      if (selected) {
-        return [...prev, worksheetIndex]
-      } else {
-        return prev.filter(index => index !== worksheetIndex)
-      }
-    })
+const handleRemoveFile = (fileId) => {
+    const updatedAnalyses = workbookAnalyses.filter(analysis => analysis.file.Id !== fileId)
+    const updatedFiles = files.filter(file => file.Id !== fileId)
+    const newTotalWorksheets = updatedAnalyses.reduce((total, analysis) => total + analysis.worksheets.length, 0)
+    
+    setWorkbookAnalyses(updatedAnalyses)
+    setFiles(updatedFiles)
+    setTotalWorksheets(newTotalWorksheets)
+    
+    if (updatedFiles.length === 0) {
+      resetState()
+    }
+    
+    toast.info('File removed')
   }
 
-  const handleSelectAll = () => {
-    setSelectedWorksheets(worksheets.map(ws => ws.index))
-    toast.success('All worksheets selected')
-  }
-
-  const handleSelectNone = () => {
-    setSelectedWorksheets([])
-    toast.info('All worksheets deselected')
-  }
-
-  return (
+return (
     <div className="space-y-8">
       {/* Upload Section */}
       <AnimatePresence mode="wait">
-        {stage === 'idle' && !file && (
+        {stage === 'idle' && files.length === 0 && (
           <motion.div
             key="upload-zone"
             initial={{ opacity: 0, y: 20 }}
@@ -156,8 +201,7 @@ toast.success(`${selectedWorksheetObjects.length} worksheets converted to PDFs s
             />
           </motion.div>
         )}
-
-        {(stage === 'upload' || stage === 'analyze' || stage === 'process' || stage === 'download') && (
+        {(stage === 'upload' || stage === 'analyze' || stage === 'combine' || stage === 'download') && (
           <motion.div
             key="processing"
             initial={{ opacity: 0, y: 20 }}
@@ -168,7 +212,7 @@ toast.success(`${selectedWorksheetObjects.length} worksheets converted to PDFs s
             <ProcessingStatus
               stage={stage}
               progress={progress}
-              worksheetCount={worksheets.length}
+              worksheetCount={totalWorksheets}
               currentWorksheet={currentWorksheet}
             />
           </motion.div>
@@ -198,49 +242,89 @@ toast.success(`${selectedWorksheetObjects.length} worksheets converted to PDFs s
             </div>
           </div>
         </motion.div>
-      )}
+)}
 
-      {/* File Info & Worksheets */}
-      {file && worksheets.length > 0 && stage !== 'process' && stage !== 'download' && (
+      {/* Files Info & Upload Additional */}
+      {files.length > 0 && stage !== 'combine' && stage !== 'download' && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
-          {/* File Info */}
+          {/* Files Summary */}
           <div className="bg-white rounded-xl border border-surface-200 p-6">
-            <div className="flex items-center space-x-4">
-              <FileIcon type="excel" size="lg" animated />
-              
-              <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-surface-900 truncate">
-                  {file.name}
-                </h3>
-<div className="flex items-center space-x-4 mt-1 text-sm text-surface-600">
-                  <span>{formatFileSize(file.size)}</span>
-                  <span>•</span>
-                  <span>{worksheets.length} worksheets</span>
-                  <span>•</span>
-                  <span>{selectedWorksheets.length} selected</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <FileIcon type="excel" size="lg" animated />
+                
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-surface-900">
+                    {files.length} Excel {files.length === 1 ? 'File' : 'Files'} Selected
+                  </h3>
+                  <div className="flex items-center space-x-4 mt-1 text-sm text-surface-600">
+                    <span>{formatFileSize(files.reduce((total, file) => total + file.size, 0))}</span>
+                    <span>•</span>
+                    <span>{totalWorksheets} total worksheets</span>
+                  </div>
                 </div>
               </div>
               
-              <Button
-                variant="ghost"
-                size="sm"
-                icon="X"
-                onClick={resetState}
-              >
-                Remove
-              </Button>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon="Plus"
+                  onClick={() => document.getElementById('additional-file-input').click()}
+                  disabled={stage !== 'idle'}
+                >
+                  Add More Files
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon="X"
+                  onClick={resetState}
+                >
+                  Clear All
+                </Button>
+              </div>
             </div>
-          </div>
+            
+            {/* Individual File List */}
+            <div className="mt-4 space-y-2">
+              {files.map((file, index) => {
+                const analysis = workbookAnalyses[index]
+                const worksheetCount = analysis ? analysis.worksheets.length : 0
+                
+                return (
+                  <div key={file.Id} className="flex items-center justify-between py-2 px-3 bg-surface-50 rounded-lg">
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      <ApperIcon name="FileSpreadsheet" size={16} className="text-surface-500 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-surface-900 truncate">{file.name}</div>
+                        <div className="text-xs text-surface-600">
+                          {formatFileSize(file.size)} • {worksheetCount} worksheets
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      icon="X"
+                      onClick={() => handleRemoveFile(file.Id)}
+                      className="text-surface-400 hover:text-surface-600"
+                    />
+                  </div>
+                )
+              })}
+            </div>
+</div>
 
-          {/* Worksheets List */}
-<div className="space-y-4">
+          {/* Combine Action */}
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-medium text-surface-900">
-                Worksheets Found ({worksheets.length})
+                Ready to Combine ({totalWorksheets} worksheets)
               </h3>
               
               {stage === 'complete' && downloadReady ? (
@@ -255,71 +339,54 @@ toast.success(`${selectedWorksheetObjects.length} worksheets converted to PDFs s
                     onClick={handleDownload}
                     className="animate-pulse-success"
                   >
-                    Download ZIP ({formatFileSize(downloadReady.size)})
+                    Download Combined File ({formatFileSize(downloadReady.size)})
                   </Button>
                   <Button
                     variant="ghost"
                     icon="RotateCcw"
                     onClick={resetState}
                   >
-                    Process Another File
+                    Process More Files
                   </Button>
                 </motion.div>
               ) : (
                 <Button
                   variant="primary"
-                  icon="Play"
-                  onClick={handleProcessFile}
-                  disabled={stage !== 'idle' || selectedWorksheets.length === 0}
+                  icon="Merge"
+                  onClick={handleCombineFiles}
+                  disabled={stage !== 'idle' || totalWorksheets === 0}
                 >
-Convert to PDFs ({selectedWorksheets.length})
+                  Combine All Files
                 </Button>
               )}
-            </div>
+</div>
 
-            {/* Selection Controls */}
+            {/* Files Preview */}
             {stage !== 'complete' && (
-              <div className="flex items-center justify-between bg-surface-50 rounded-lg p-3">
-                <div className="flex items-center space-x-4">
-                  <span className="text-sm text-surface-600">
-                    {selectedWorksheets.length} of {worksheets.length} worksheets selected
-                  </span>
+              <div className="bg-surface-50 rounded-lg p-4">
+                <div className="text-sm text-surface-600 mb-3">
+                  All worksheets from the following files will be combined:
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleSelectAll}
-                    disabled={selectedWorksheets.length === worksheets.length}
-                  >
-                    Select All
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleSelectNone}
-                    disabled={selectedWorksheets.length === 0}
-                  >
-                    Select None
-                  </Button>
+                <div className="space-y-2">
+                  {workbookAnalyses.map((analysis, index) => (
+                    <div key={analysis.file.Id} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center space-x-2">
+                        <ApperIcon name="FileSpreadsheet" size={14} className="text-surface-400" />
+                        <span className="font-medium text-surface-700 truncate max-w-xs">
+                          {analysis.file.name}
+                        </span>
+                      </div>
+                      <span className="text-surface-500">
+                        {analysis.worksheets.length} worksheets
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
-            
-<div className="grid gap-3">
-              {worksheets.map((worksheet, index) => (
-                <WorksheetCard
-                  key={`${worksheet.name}-${index}`}
-                  worksheet={worksheet}
-                  index={index}
-                  selected={selectedWorksheets.includes(worksheet.index)}
-                  onSelectionChange={(selected) => handleWorksheetSelection(worksheet.index, selected)}
-                  disabled={stage !== 'idle'}
-                />
-              ))}
-            </div>
-          </div>
-        </motion.div>
+</div>
+        </div>
+      </motion.div>
       )}
 
       {/* Success State */}
@@ -345,13 +412,12 @@ Convert to PDFs ({selectedWorksheets.length})
           </motion.div>
           
           <h3 className="text-lg font-medium text-green-800 mb-2">
-            Processing Complete!
+Processing Complete!
           </h3>
-<p className="text-green-700 mb-4">
-Your {selectedWorksheets.length} selected worksheets have been converted to PDF files and packaged into a ZIP archive.
+          <p className="text-green-700 mb-4">
+            Your {totalWorksheets} worksheets from {files.length} {files.length === 1 ? 'file' : 'files'} have been combined into a single Excel file.
           </p>
-          
-<div className="flex justify-center flex-wrap gap-3">
+          <div className="flex justify-center flex-wrap gap-3">
             {downloadReady && (
               <Button
                 variant="success"
@@ -359,12 +425,28 @@ Your {selectedWorksheets.length} selected worksheets have been converted to PDF 
                 onClick={handleDownload}
                 size="lg"
               >
-                Download PDFs ({formatFileSize(downloadReady.size)})
+                Download Combined Excel ({formatFileSize(downloadReady.size)})
               </Button>
             )}
           </div>
         </motion.div>
       )}
+      
+      {/* Hidden input for additional files */}
+      <input
+        id="additional-file-input"
+        type="file"
+        accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+        onChange={(e) => {
+          const newFiles = Array.from(e.target.files)
+          if (newFiles.length > 0) {
+            handleAddMoreFiles(newFiles)
+          }
+          e.target.value = ''
+        }}
+        className="hidden"
+multiple
+      />
     </div>
   )
 }

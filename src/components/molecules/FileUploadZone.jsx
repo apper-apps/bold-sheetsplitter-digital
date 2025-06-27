@@ -1,125 +1,129 @@
-import { useState, useRef } from 'react'
-import { motion } from 'framer-motion'
-import ApperIcon from '@/components/ApperIcon'
-import Button from '@/components/atoms/Button'
+import React, { useCallback, useState } from "react";
+import { motion } from "framer-motion";
+import ApperIcon from "@/components/ApperIcon";
+import Button from "@/components/atoms/Button";
 
-const FileUploadZone = ({ 
-  onFileSelect, 
-  disabled = false,
-  acceptedTypes = '.xlsx,.xls',
-  maxSize = 50 * 1024 * 1024,
-  className = '' 
-}) => {
-  const [dragOver, setDragOver] = useState(false)
-  const fileInputRef = useRef(null)
+const FileUploadZone = ({ onFileSelect, disabled = false, className = '' }) => {
+  const [isDragOver, setIsDragOver] = useState(false)
 
-  const handleDragOver = (e) => {
+  const handleDragEnter = useCallback((e) => {
     e.preventDefault()
+    e.stopPropagation()
     if (!disabled) {
-      setDragOver(true)
+      setIsDragOver(true)
     }
-  }
+  }, [disabled])
 
-  const handleDragLeave = (e) => {
+  const handleDragLeave = useCallback((e) => {
     e.preventDefault()
-    setDragOver(false)
-  }
+    e.stopPropagation()
+    if (e.currentTarget === e.target) {
+      setIsDragOver(false)
+    }
+  }, [])
 
-  const handleDrop = (e) => {
+  const handleDragOver = useCallback((e) => {
     e.preventDefault()
-    setDragOver(false)
+    e.stopPropagation()
+  }, [])
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
     
     if (disabled) return
     
     const files = Array.from(e.dataTransfer.files)
     if (files.length > 0) {
-      onFileSelect(files[0])
+      onFileSelect(files)
     }
-  }
+  }, [onFileSelect, disabled])
 
-  const handleFileInput = (e) => {
+  const handleFileInput = useCallback((e) => {
     const files = Array.from(e.target.files)
-    if (files.length > 0) {
-      onFileSelect(files[0])
+    if (files && files.length > 0) {
+      onFileSelect(files)
     }
-    // Reset input to allow selecting the same file again
+// Reset input value to allow same file selection
     e.target.value = ''
-  }
-
-  const formatFileSize = (bytes) => {
-    const mb = bytes / (1024 * 1024)
-    return `${mb.toFixed(0)}MB`
-  }
+  }, [onFileSelect])
 
   return (
-    <div className={className}>
-      <motion.div
+    <motion.div
+      className={`relative ${className}`}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <div
         className={`
-          file-drop-zone border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200
-          ${dragOver ? 'drag-over' : 'border-surface-300'}
-          ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-primary hover:bg-surface-50'}
+          file-drop-zone border-2 border-dashed rounded-xl p-12 text-center transition-all duration-200
+          ${isDragOver && !disabled
+            ? 'border-primary bg-primary/5 scale-105'
+            : 'border-surface-300 hover:border-surface-400 hover:bg-surface-50'
+          }
+          ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         `}
-        onDragOver={handleDragOver}
+        onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
         onDrop={handleDrop}
-        onClick={() => !disabled && fileInputRef.current?.click()}
-        whileHover={disabled ? {} : { scale: 1.01 }}
-        whileTap={disabled ? {} : { scale: 0.99 }}
+        onClick={() => !disabled && document.getElementById('file-input').click()}
       >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={acceptedTypes}
-          onChange={handleFileInput}
-          className="hidden"
-          disabled={disabled}
-        />
-        
-        <div className="space-y-4">
-          <motion.div
-            className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center"
-            animate={dragOver ? { scale: 1.1 } : { scale: 1 }}
-            transition={{ duration: 0.2 }}
-          >
+        <motion.div
+          className="space-y-6"
+          animate={isDragOver ? { scale: 1.05 } : { scale: 1 }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="mx-auto w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center">
             <ApperIcon 
-              name={dragOver ? "FileUp" : "Upload"} 
+              name={isDragOver ? "Download" : "Upload"} 
               size={32} 
-              className={`${dragOver ? 'text-primary' : 'text-surface-400'} transition-colors`}
+              className={`text-primary transition-transform duration-200 ${isDragOver ? 'animate-bounce' : ''}`}
             />
-          </motion.div>
+          </div>
           
           <div className="space-y-2">
             <h3 className="text-lg font-medium text-surface-900">
-              {dragOver ? 'Drop your Excel file here' : 'Upload your Excel workbook'}
+              {isDragOver ? 'Drop your Excel files here' : 'Upload Excel Files'}
             </h3>
-            <p className="text-surface-600">
-              Drag and drop your file here, or click to browse
+<p className="text-surface-600 max-w-sm mx-auto">
+              Drag and drop multiple Excel files (.xlsx, .xls) or click to browse. We'll combine all worksheets into one file.
             </p>
           </div>
-          
-          <div className="space-y-2">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button
-              variant="outline"
-              size="md"
-              icon="FolderOpen"
+              variant="primary"
+              icon="Upload"
               disabled={disabled}
               onClick={(e) => {
                 e.stopPropagation()
-                fileInputRef.current?.click()
+                document.getElementById('file-input').click()
               }}
             >
-              Choose File
+              Browse Files
             </Button>
             
-            <div className="text-sm text-surface-500 space-y-1">
-              <p>Supported formats: .xlsx, .xls</p>
-              <p>Maximum file size: {formatFileSize(maxSize)}</p>
+            <div className="text-xs text-surface-500 space-y-1">
+              <div>Supported: .xlsx, .xls files</div>
+              <div>Multiple files allowed</div>
             </div>
           </div>
-        </div>
-      </motion.div>
-    </div>
-  )
+        </motion.div>
+      </div>
+      
+      <input
+        id="file-input"
+        type="file"
+        accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+        onChange={handleFileInput}
+        className="hidden"
+        disabled={disabled}
+        multiple
+      />
+    </motion.div>
+)
 }
 
 export default FileUploadZone

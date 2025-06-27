@@ -1,6 +1,7 @@
-import { motion } from 'framer-motion'
-import ApperIcon from '@/components/ApperIcon'
-import ProgressBar from '@/components/atoms/ProgressBar'
+import { motion } from "framer-motion";
+import React from "react";
+import ApperIcon from "@/components/ApperIcon";
+import ProgressBar from "@/components/atoms/ProgressBar";
 
 const ProcessingStatus = ({ 
   stage = 'idle', 
@@ -9,21 +10,21 @@ const ProcessingStatus = ({
   currentWorksheet = '',
   className = '' 
 }) => {
-  const stages = [
+const stages = [
     { key: 'upload', label: 'Upload', icon: 'Upload' },
     { key: 'analyze', label: 'Analyze', icon: 'Search' },
-    { key: 'process', label: 'Process', icon: 'Cog' },
+    { key: 'combine', label: 'Combine', icon: 'Merge' },
     { key: 'download', label: 'Download', icon: 'Download' }
   ]
   
   const currentStageIndex = stages.findIndex(s => s.key === stage)
   
   const stageMessages = {
-upload: 'Uploading your Excel file...',
+    upload: 'Uploading your Excel files...',
     analyze: 'Analyzing worksheets...',
-    process: `Converting worksheets to PDFs... ${currentWorksheet ? `(${currentWorksheet})` : ''}`,
+    combine: `Combining worksheets into one file... ${currentWorksheet ? `(${currentWorksheet})` : ''}`,
     download: 'Preparing download...',
-    complete: 'Processing complete!'
+    complete: 'Files combined successfully!'
   }
 
   return (
@@ -34,9 +35,9 @@ upload: 'Uploading your Excel file...',
       transition={{ duration: 0.3 }}
     >
       <div className="space-y-6">
-        <div className="text-center">
+<div className="text-center">
           <h3 className="text-lg font-medium text-surface-900 mb-2">
-            Processing Your File
+            Combining Your Files
           </h3>
           <p className="text-surface-600">
             {stageMessages[stage] || 'Processing...'}
@@ -65,16 +66,17 @@ upload: 'Uploading your Excel file...',
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
           >
-            <ApperIcon 
+<ApperIcon 
               name="Loader2" 
               size={16} 
               className="animate-spin"
             />
             <span className="text-sm font-medium">
-              {stage === 'process' ? `${progress}% complete` : 'Please wait...'}
+              {stage === 'combine' ? `${progress}% complete` : 'Please wait...'}
             </span>
           </motion.div>
         </div>
+      </div>
       </div>
     </motion.div>
   )
